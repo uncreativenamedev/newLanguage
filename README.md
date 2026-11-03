@@ -1,5 +1,7 @@
 compilerCreator is written in C and either:
+
 a> writes file setting.bin for use by the compiler (contains uint8 operatingSystem (windows, linux, mac), uint8 assemblyType (windowsX64, linuxX64, macARM64)).
+
 b> writes compiler executable for the above indicated system and assembly language:
 
 Settings for compilerCreator:
