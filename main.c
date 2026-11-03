@@ -1,97 +1,105 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 
-enum InstructionGroupType0 {
-	InstructionGroupType0_undefined,
-	InstructionGroupType0_comment,
-	InstructionGroupType0_exitFile,
-	InstructionGroupType0_preprocessorDirective
+#define COMPILER_CREATOR_OPERATION_WRITE_SETTING_FILE 0b00000000
+#define COMPILER_CREATOR_OPERATION_WRITE_COMPILER     0b00000001
+
+#define OPERATING_SYSTEM_WINDOWS 0b00000000
+#define OPERATING_SYSTEM_LINUX   0b00000001
+#define OPERATING_SYSTEM_MAC     0b00000010 
+
+#define ASSEMBLY_TYPE_WINDOWS_X64 0b00000000
+#define ASSEMBLY_TYPE_LINUX_X64   0b00000001
+#define ASSEMBLY_TYPE_MAC_ARM64   0b00000010
+
+struct CompilerCreatorSettings {
+	uint8_t compilerCreatorOperation;
+	uint8_t operatingSystem;
+	uint8_t assemblyType;
 };
 
-enum InstructionGroupType1 {
-	InstructionGroupType1_undefined,
-	InstructionGroupType1_define,
-	InstructionGroupType1_setting
+struct DosHeaderWindowsX64 {
+	uint16_t magic;
+	uint16_t cblp;
+	uint16_t cp;
+	uint16_t crlc;
+	uint16_t cparhdr;
+	uint16_t minalloc;
+	uint16_t maxalloc;
+	uint16_t ss;
+	uint16_t sp;
+	uint16_t csum;
+	uint16_t ip;
+	uint16_t cs;
+	uint16_t lfarlc;
+	uint16_t ovno;
+	uint16_t res[4];
+	uint16_t oemid;
+	uint16_t oeminfo;
+	uint16_t res2[10];
+	uint32_t lfanew;
 };
 
-enum InstructionType {
-	
-};
-
-struct LineText {
-	uint8_t instructionGroupTypeText[2]; //see README.md
-	uint8_t instructionTypeText[1024]; //the type of the instruction. see README.md
-	uint8_t argumentLengthText; //the number of arguments, max 9
-	uint8_t argumentTypeLocationIndexText[9][1024]; //0: argument type is local to the program, other: found in the includedType file
-	uint8_t argumentTypeText[9][1024]; //the type of the argument
-	uint8_t argumentLocationIndexText[1024]; //0: block scope, 1: function scope, 2: program scope, other: found in the includedVariable file
-	uint8_t argumentText[9][1024]; //argument can be a variable or a literal
-};
-
-union ArgumentBinary {
-	uint8_t u8;
-	uint16_t u16;
-	uint32_t u32;
-	uint64_t u64;
-};
-
-struct LineBinaryIntermediate {
-	uint64_t instructionTypeIndex; //the typeIndex of the instruction. see README.md
-	uint64_t argumentTypeLocationIndex[9]; //0 means the argument type is local to the program, the other indices are found in the includedType file
-	uint64_t argumentTypeIndex[9]; //the typeIndex of the argument, within the list of types included from the location
-	uint64_t argumentLocationIndex[9]; //0: block scope, 1: function scope, 2: program scope, other: found in the includedVariable file
-	union ArgumentBinary argumentBinary[9]; //arguments can be a number of things. eg. literal, function 
-	uint8_t instructionGroupTypeIndex[2]; //see README.md
-	uint8_t argumentLength; //the number of arguments, max 9
-};
-
-uint8_t getLineBinaryIntermediateinstructionGroupTypeIndex0(uint8_t input) {
-	uint8_t returnValue = InstructionGroupType0_undefined;
-	if (input == (uint8_t)'u')
-		returnValue = InstructionGroupType0_undefined;
-	else if (input == (uint8_t)'/')
-		returnValue = InstructionGroupType0_comment;
-	else if (input == (uint8_t)'~')
-		returnValue = InstructionGroupType0_exitFile;
-	else if (input == (uint8_t)'#')
-		returnValue = InstructionGroupType0_preprocessorDirective;
-	return returnValue;
-}
-
-uint8_t getLineBinaryIntermediateinstructionGroupTypeIndex1(uint8_t input) {
-	uint8_t returnValue = InstructionGroupType1_undefined;
-	if (input == (uint8_t)'d')
-		returnValue = InstructionGroupType1_define;
-	else if (input == (uint8_t)'s')
-		returnValue = InstructionGroupType1_setting;
-	return returnValue;
-}
-
-void readVariableLengthText(FILE* fileRead, uint8_t* destination) {
-	uint64_t currentIndex = UINT64_C(0);
-	destination[0] = UINT8_C(0);
-	while (destination[currentIndex] != (uint8_t)'>' && currentIndex < UINT64_C(1024)) { //> is the exit indicator for text
-		fread((void*)&destination[currentIndex], sizeof(uint8_t), 1, fileRead);
+int readSettings(int returnValue, struct CompilerCreatorSettings* compilerCreatorSettings) {
+	FILE* fileRead = NULL;
+	fileRead = fopen("compilerCreatorSetting.txt", "rb"); //assumes the file is written in utf8 without bom and contains only ascii characters
+	if (fileRead == NULL)
+		returnValue = 0;
+	else {
+		returnValue = fread((void*)&compilerCreatorSettings->compilerCreatorOperation, sizeof(uint8_t), 1, fileRead);
+		if (returnValue) {
+			compilerCreatorSettings->compilerCreatorOperation -= UINT8_C(48);
+			returnValue = fread((void*)&compilerCreatorSettings->operatingSystem, sizeof(uint8_t), 1, fileRead);
+		}
+		if (returnValue) {
+			compilerCreatorSettings->operatingSystem -= UINT8_C(48);
+			returnValue = fread((void*)&compilerCreatorSettings->assemblyType, sizeof(uint8_t), 1, fileRead);
+		}
+		if(returnValue)
+			compilerCreatorSettings->assemblyType -= UINT8_C(48);
+		fclose(fileRead);
 	}
+	return returnValue;
+}
+
+int writeSettingsFile(int returnValue, struct CompilerCreatorSettings* compilerCreatorSettings) {
+	FILE* fileWrite = NULL;
+	fileWrite = fopen("compilerSetting.bin", "wb");
+	if (fileWrite == NULL)
+		returnValue = 0;
+	else {
+		returnValue = fwrite((void*)&compilerCreatorSettings->operatingSystem, sizeof(uint8_t), 1, fileWrite);
+		if(returnValue)
+			returnValue = fwrite((void*)&compilerCreatorSettings->assemblyType, sizeof(uint8_t), 1, fileWrite);
+		fclose(fileWrite);
+	}
+	return returnValue;
+}
+
+int writeDOSHeader(int returnValue, FILE* fileWrite) {
+
+}
+
+int writeCompilerWindowsX64(int returnValue) {
+
+}
+
+int writeCompiler(int returnValue, struct CompilerCreatorSettings* compilerCreatorSettings) {
+	
+	return returnValue;
 }
 
 int main(int argc, char** argv) {
-	struct LineText* lineText = malloc(sizeof(struct LineText));
-	if (lineText == NULL)
-		return 0;
-	lineText->instructionGroupTypeText[0] = UINT8_C(0);
-	struct LineBinaryIntermediate lineBinaryIntermediate;
-	FILE* fileRead = fopen(argv[1], "rb");
-	FILE* fileWrite = fopen(argv[2], "wb");
-	while (lineText->instructionGroupTypeText[0] != ((uint8_t)'~')) { //~ as instructionGroupTypeText[0] marks the end of execution for the file being written in
-		fread((void*)&lineText->instructionGroupTypeText[0], sizeof(uint8_t), 1, fileRead);
-		lineBinaryIntermediate.instructionGroupTypeIndex[0] = getLineBinaryIntermediateinstructionGroupTypeIndex0(lineText->instructionGroupTypeText[0]);
-		fread((void*)&lineText->instructionGroupTypeText[1], sizeof(uint8_t), 1, fileRead);
-		lineBinaryIntermediate.instructionGroupTypeIndex[1] = getLineBinaryIntermediateinstructionGroupTypeIndex1(lineText->instructionGroupTypeText[1]);
-		fseek(fileRead, sizeof(uint8_t), SEEK_CUR);
-		readVariableLengthText(fileRead, lineText->instructionTypeText);
+	int returnValue = 1; //in this program, 0 == error, anything else is valid
+	struct CompilerCreatorSettings compilerCreatorSettings;
+	returnValue = readSettings(returnValue, &compilerCreatorSettings);
+	if (returnValue) {
+		if (compilerCreatorSettings.compilerCreatorOperation == (uint8_t)COMPILER_CREATOR_OPERATION_WRITE_SETTING_FILE)
+			returnValue = writeSettingsFile(returnValue, &compilerCreatorSettings);
+		else if (compilerCreatorSettings.compilerCreatorOperation == (uint8_t)COMPILER_CREATOR_OPERATION_WRITE_COMPILER)
+			returnValue = writeCompiler(returnValue, &compilerCreatorSettings);
 	}
-	free(lineText);
-	return 0;
+	return returnValue;
 }
