@@ -7,7 +7,7 @@ Configuration Manager: x64 Release.
 C/C++ > Language > C Langage Standard: C17.
 
 Features compilerCreator includes in compiler:
-0) return 1 in Windows x64 PE (in progress).
+0) return 1 in Windows x64 PE.
 
 Directions To Run:
 To write settings to setting.bin:
