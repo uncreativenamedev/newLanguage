@@ -1,18 +1,27 @@
 #include "includeUniversal.h"
 #include "settings.h"
 #include "dosHeaderWindowsX64.h"
+#include "dosStubWindowsX64.h"
+#include "ntHeaderWindowsX64.h"
 
 int writeCompilerWindowsX64(int returnValue) {
 	FILE* fileWrite = NULL;
-	returnValue = writeDOSHeader(returnValue, fileWrite);
+	returnValue = writeDosHeaderwINDOWSx64(returnValue, &fileWrite);
+	if (returnValue == ERROR_NONE)
+		returnValue = writeDosStubWindowsX64(returnValue, &fileWrite);
+	if (returnValue == ERROR_NONE)
+		returnValue = writeNTHeaderWindowsX64(returnValue, &fileWrite);
+	if (returnValue == ERROR_NONE)
+		fclose(fileWrite);
+	return returnValue;
 }
 
 int writeCompilerLinuxX64(int returnValue) {
-
+	return returnValue;
 }
 
 int writeCompilerMacARM64(int returnValue) {
-
+	return returnValue;
 }
 
 int writeCompiler(int returnValue, struct CompilerCreatorSettings* compilerCreatorSettings) {
