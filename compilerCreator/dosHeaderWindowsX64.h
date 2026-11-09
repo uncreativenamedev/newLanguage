@@ -23,4 +23,4 @@ struct DosHeaderWindowsX64 {
 	uint32_t lfanew;
 };
 
-int writeDOSHeader(int returnValue, FILE* fileWrite);
+int writeDosHeaderwINDOWSx64(int returnValue, FILE** fileWrite);
